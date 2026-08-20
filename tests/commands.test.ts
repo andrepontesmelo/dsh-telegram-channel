@@ -18,11 +18,11 @@ test('parse slash commands for remote control', () => {
   assert.equal(parseCommand('hello').type, 'plain')
 })
 
-test('Chinese copy mentions sessions and bind', () => {
-  assert.ok(MSG.DENIED.includes('权限') || MSG.DENIED.includes('授权'))
+test('English copy mentions sessions and bind', () => {
+  assert.ok(MSG.DENIED.includes('Access denied'))
   assert.ok(MSG.HELP.includes('/sessions'))
   assert.ok(MSG.HELP.includes('/last'))
   assert.ok(MSG.HELP.includes('/model'))
   assert.ok(MSG.NEED_BIND.includes('/sessions'))
-  assert.ok(MSG.WELCOME.includes('Web') || MSG.WELCOME.includes('遥控器'))
+  assert.ok(MSG.WELCOME.includes('Web') || MSG.WELCOME.includes('remote'))
 })

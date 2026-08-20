@@ -73,7 +73,7 @@ const MAX_BUTTONS = 40
 
 function lastContextKeyboard(): InlineKeyboardMarkup {
   return {
-    inline_keyboard: [[{ text: '查看上次对话', callback_data: LAST_CB }]],
+    inline_keyboard: [[{ text: 'View last conversation', callback_data: LAST_CB }]],
   }
 }
 
@@ -132,13 +132,13 @@ export class TelegramBridge {
       })
     })
     void this.client.setMyCommands([
-      { command: 'start', description: '欢迎与用法' },
-      { command: 'sessions', description: '按工作区列出并附着会话' },
-      { command: 'last', description: '查看上次问答（续接上下文）' },
-      { command: 'model', description: '切换当前绑定会话的模型' },
-      { command: 'status', description: '查看当前绑定' },
-      { command: 'unbind', description: '断开手机绑定（不关闭本机会话）' },
-      { command: 'help', description: '显示帮助' },
+      { command: 'start', description: 'Welcome & usage' },
+      { command: 'sessions', description: 'List sessions by workspace and attach' },
+      { command: 'last', description: 'View last Q&A (continue context)' },
+      { command: 'model', description: 'Switch model of the bound session' },
+      { command: 'status', description: 'Show current binding' },
+      { command: 'unbind', description: 'Detach phone binding (session stays open)' },
+      { command: 'help', description: 'Show help' },
     ]).then(() => {
       this.ctx.logger.info('dsh-telegram-channel: bot commands registered')
     }).catch((err) => {
@@ -259,7 +259,7 @@ export class TelegramBridge {
       const index = Number(data.slice(SID_CB.length))
       const row = picker?.sessions[index]
       if (!row) {
-        await this.client.answerCallbackQuery(cq.id, '会话已过期')
+        await this.client.answerCallbackQuery(cq.id, 'Session expired')
         await this.client.sendMessage(chatId, MSG.PICKER_STALE)
         return
       }
@@ -270,7 +270,7 @@ export class TelegramBridge {
       const index = Number(data.slice(MODEL_CB.length))
       const option = picker?.models?.[index]
       if (!option) {
-        await this.client.answerCallbackQuery(cq.id, '列表已过期')
+        await this.client.answerCallbackQuery(cq.id, 'List expired')
         await this.client.sendMessage(chatId, MSG.PICKER_STALE)
         return
       }
@@ -300,7 +300,7 @@ export class TelegramBridge {
       const pending = this.pendingModels.get(String(chatId)) ?? picker?.pendingModel
       const effort = pending?.efforts?.[index]
       if (!pending || !effort?.id) {
-        await this.client.answerCallbackQuery(cq.id, '列表已过期')
+        await this.client.answerCallbackQuery(cq.id, 'List expired')
         await this.client.sendMessage(chatId, MSG.PICKER_STALE)
         return
       }
@@ -352,16 +352,16 @@ export class TelegramBridge {
     }
     const body = [
       catalog.complete
-        ? `选择工作区（共 ${workspaces.length} 个，与 Web 对齐，已排除归档）：`
-        : `选择工作区（共 ${workspaces.length} 个）⚠️ 仅运行中的会话（apiProxy 未就绪，完整列表需插件 ≥0.3.2 并重启 dsh web）：`,
+        ? `Choose a workspace (${workspaces.length} total, Web-aligned, archived excluded):`
+        : `Choose a workspace (${workspaces.length} total) ⚠️ only running sessions (apiProxy not ready; full list needs plugin ≥0.3.2 and a dsh web restart):`,
       '',
       ...shown.map((ws, i) => {
         const n = visibleSessionsForWorkspace(catalog, ws).length
-        return `${i + 1}. ${ws.title}\n   ${ws.path}\n   会话：${n}`
+        return `${i + 1}. ${ws.title}\n   ${ws.path}\n   Sessions: ${n}`
       }),
-      workspaces.length > MAX_BUTTONS ? `\n仅显示前 ${MAX_BUTTONS} 个工作区。` : '',
+      workspaces.length > MAX_BUTTONS ? `\nOnly the first ${MAX_BUTTONS} workspaces are shown.` : '',
       '',
-      '点下方按钮进入该工作区的会话列表。',
+      'Tap a button below to open that workspace\u2019s session list.',
     ].filter(Boolean).join('\n')
     await this.client.sendMessage(chatId, body, undefined, keyboard)
   }
@@ -389,25 +389,25 @@ export class TelegramBridge {
     const keyboard: InlineKeyboardMarkup = {
       inline_keyboard: [
         ...shown.map((row, i) => ([{
-          text: truncateButton(`${i + 1}. ${row.title}${row.running ? '' : ' · 冷'}`),
+          text: truncateButton(`${i + 1}. ${row.title}${row.running ? '' : ' · cold'}`),
           callback_data: `${SID_CB}${i}`,
         }])),
-        [{ text: '← 返回工作区', callback_data: BACK_WS_CB }],
+        [{ text: '← Back to workspaces', callback_data: BACK_WS_CB }],
       ],
     }
     const body = [
-      `工作区：${workspace.title}`,
+      `Workspace: ${workspace.title}`,
       workspace.path,
       '',
-      `选择会话（共 ${sessions.length} 个）：`,
+      `Choose a session (${sessions.length} total):`,
       '',
       ...shown.map((row, i) => {
-        const mark = row.running ? '运行中' : '未附着'
+        const mark = row.running ? 'running' : 'not attached'
         return `${i + 1}. ${row.title}\n   ${mark} · …${row.sessionId.slice(-12)}`
       }),
-      sessions.length > MAX_BUTTONS ? `\n仅显示前 ${MAX_BUTTONS} 个会话。` : '',
+      sessions.length > MAX_BUTTONS ? `\nOnly the first ${MAX_BUTTONS} sessions are shown.` : '',
       '',
-      '点下方按钮附着；冷会话会自动 resume（不关闭 Web）。',
+      'Tap a button below to attach; cold sessions resume automatically (Web stays open).',
     ].filter(Boolean).join('\n')
     await this.client.sendMessage(chatId, body, undefined, keyboard)
   }
@@ -415,7 +415,7 @@ export class TelegramBridge {
   private async bindSession(chatId: number, callbackId: string, row: SessionRow): Promise<void> {
     const agent = await this.ensureLiveAgent(row.sessionId)
     if (!agent) {
-      await this.client.answerCallbackQuery(callbackId, '无法附着')
+      await this.client.answerCallbackQuery(callbackId, 'Cannot attach')
       await this.client.sendMessage(chatId, MSG.RESUME_FAILED)
       return
     }
@@ -424,7 +424,7 @@ export class TelegramBridge {
       ? displayLabel({ ...parts, title: row.title })
       : displayLabel(parts)
     this.bindings.set(String(chatId), { chatId, sessionId: String(agent.id), label })
-    await this.client.answerCallbackQuery(callbackId, '已附着')
+    await this.client.answerCallbackQuery(callbackId, 'Attached')
     await this.client.sendMessage(chatId, MSG.BOUND(label), undefined, lastContextKeyboard())
   }
 
@@ -484,10 +484,10 @@ export class TelegramBridge {
         }])),
       }
       const body = [
-        `当前模型：${formatModel(snap.current)}`,
-        `会话：${binding.label}`,
+        `Current model: ${formatModel(snap.current)}`,
+        `Session: ${binding.label}`,
         '',
-        '选择新模型（下一回合生效）：',
+        'Choose a new model (takes effect next turn):',
       ].join('\n')
       await this.client.sendMessage(chatId, body, undefined, keyboard)
     } catch (err) {
@@ -505,12 +505,12 @@ export class TelegramBridge {
           text: truncateButton(e.name || e.id),
           callback_data: `${EFFORT_CB}${i}`,
         }])),
-        [{ text: '← 返回模型列表', callback_data: BACK_MODEL_CB }],
+        [{ text: '← Back to model list', callback_data: BACK_MODEL_CB }],
       ],
     }
     await this.client.sendMessage(
       chatId,
-      `已选 ${option.label}\n请选择 reasoning effort：`,
+      `Selected ${option.label}\nChoose a reasoning effort:`,
       undefined,
       keyboard,
     )
@@ -524,7 +524,7 @@ export class TelegramBridge {
   ): Promise<void> {
     const binding = this.bindings.get(String(chatId))
     if (!binding) {
-      await this.client.answerCallbackQuery(callbackId, '未绑定')
+      await this.client.answerCallbackQuery(callbackId, 'Not bound')
       await this.client.sendMessage(chatId, MSG.NEED_BIND)
       return
     }
@@ -539,12 +539,12 @@ export class TelegramBridge {
       this.pendingModels.delete(String(chatId))
       const picker = this.pickers.get(String(chatId))
       if (picker) picker.pendingModel = undefined
-      await this.client.answerCallbackQuery(callbackId, '已切换')
+      await this.client.answerCallbackQuery(callbackId, 'Switched')
       await this.client.sendMessage(chatId, MSG.MODEL_SET(formatModel(selected)))
     } catch (err) {
       this.ctx.logger.warn(`dsh-telegram-channel: selectModel failed: ${this.redact(err)}`)
       const detail = err instanceof Error ? err.message : String(err)
-      await this.client.answerCallbackQuery(callbackId, '切换失败')
+      await this.client.answerCallbackQuery(callbackId, 'Switch failed')
       await this.client.sendMessage(chatId, MSG.MODEL_FAILED(detail))
     }
   }

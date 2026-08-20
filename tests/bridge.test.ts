@@ -135,7 +135,7 @@ test('/sessions lists workspaces then sessions via callbacks', async () => {
   const followups: UserMessage[] = []
   const agent = makeAgent('live-aaa', followups, {
     cwd: 'D:/gitData/demo-app',
-    title: '演示会话',
+    title: 'Demo session',
   })
   const ctx = {
     logger: { info() {}, warn() {}, error() {} },
@@ -154,7 +154,7 @@ test('/sessions lists workspaces then sessions via callbacks', async () => {
     sleep: async () => {},
   })
   await bridge.processUpdate(messageUpdate(10, 1, '/sessions'))
-  assert.match(sent[0]!.text, /选择工作区/)
+  assert.match(sent[0]!.text, /Choose a workspace/)
   assert.match(sent[0]!.text, /demo-app/)
   assert.equal(sent[0]!.replyMarkup?.inline_keyboard?.[0]?.[0]?.callback_data, 'ws:0')
 
@@ -168,8 +168,8 @@ test('/sessions lists workspaces then sessions via callbacks', async () => {
     },
   })
   const sessionMsg = sent.at(-1)!
-  assert.match(sessionMsg.text, /选择会话/)
-  assert.match(sessionMsg.text, /演示会话/)
+  assert.match(sessionMsg.text, /Choose a session/)
+  assert.match(sessionMsg.text, /Demo session/)
   assert.equal(sessionMsg.replyMarkup?.inline_keyboard?.[0]?.[0]?.callback_data, 'sid:0')
 })
 
@@ -207,7 +207,7 @@ test('/sessions via apiProxy shows all workspaces excluding archived', async () 
               running: true,
               blank: false,
               cwd: 'D:/a',
-              projections: { values: { title: '会话一' } },
+              projections: { values: { title: 'Session One' } },
             },
             {
               sessionId: 's-archived',
@@ -215,7 +215,7 @@ test('/sessions via apiProxy shows all workspaces excluding archived', async () 
               running: false,
               blank: false,
               cwd: 'D:/a',
-              projections: { values: { title: '已归档' } },
+              projections: { values: { title: 'Archived' } },
             },
             {
               sessionId: 's2',
@@ -223,7 +223,7 @@ test('/sessions via apiProxy shows all workspaces excluding archived', async () 
               running: false,
               blank: false,
               cwd: 'D:/b',
-              projections: { values: { title: '会话二' } },
+              projections: { values: { title: 'Session Two' } },
             },
           ],
         }),
@@ -284,7 +284,7 @@ test('callback bind then plain text followups live agent; mirror assistant to ch
       data: `${BIND_CB_PREFIX}live-bbb`,
     },
   })
-  assert.match(sent.at(-1)!.text, /已附着/)
+  assert.match(sent.at(-1)!.text, /Attached/)
   assert.equal(sent.at(-1)!.replyMarkup?.inline_keyboard?.[0]?.[0]?.callback_data, LAST_CB)
 
   await bridge.processUpdate(messageUpdate(10, 1, 'hello from phone', 3))
@@ -306,7 +306,7 @@ test('callback bind then plain text followups live agent; mirror assistant to ch
 test('cold session bind resumes then followups', async () => {
   const sent: SentMessage[] = []
   const followups: UserMessage[] = []
-  const agent = makeAgent('cold-1', followups, { cwd: 'D:/proj', title: '冷会话' })
+  const agent = makeAgent('cold-1', followups, { cwd: 'D:/proj', title: 'Cold Session' })
   let resumed = false
   const ctx = {
     logger: { info() {}, warn() {}, error() {} },
@@ -334,7 +334,7 @@ test('cold session bind resumes then followups', async () => {
             running: false,
             blank: false,
             cwd: 'D:/proj',
-            projections: { values: { title: '冷会话' } },
+            projections: { values: { title: 'Cold Session' } },
           }],
         }),
       },
@@ -368,7 +368,7 @@ test('cold session bind resumes then followups', async () => {
     },
   })
   assert.equal(resumed, true)
-  assert.match(sent.at(-1)!.text, /已附着/)
+  assert.match(sent.at(-1)!.text, /Attached/)
   await bridge.processUpdate(messageUpdate(10, 1, 'hi cold', 4))
   assert.equal(followups.length, 1)
 })
@@ -424,7 +424,7 @@ test('/model lists and selects via apiProxy', async () => {
     },
   })
   await bridge.processUpdate(messageUpdate(10, 1, '/model', 2))
-  assert.match(sent.at(-1)!.text, /当前模型/)
+  assert.match(sent.at(-1)!.text, /Current model/)
   assert.equal(sent.at(-1)!.replyMarkup?.inline_keyboard?.[0]?.[0]?.callback_data, 'mdl:0')
 
   await bridge.processUpdate({
@@ -441,7 +441,7 @@ test('/model lists and selects via apiProxy', async () => {
     provider: 'deepseek',
     model: 'chat',
   })
-  assert.match(sent.at(-1)!.text, /已切换模型/)
+  assert.match(sent.at(-1)!.text, /Switched model to/)
 })
 
 test('/model effort picker applies reasoningEffort', async () => {
@@ -517,7 +517,7 @@ test('/model effort picker applies reasoningEffort', async () => {
       data: 'mdl:0',
     },
   })
-  assert.match(sent.at(-1)!.text, /reasoning effort|请选择/)
+  assert.match(sent.at(-1)!.text, /reasoning effort|Choose a reasoning effort/)
   assert.equal(sent.at(-1)!.replyMarkup?.inline_keyboard?.[0]?.[0]?.callback_data, 'eff:0')
   await bridge.processUpdate({
     update_id: 4,
@@ -534,21 +534,21 @@ test('/model effort picker applies reasoningEffort', async () => {
     model: 'reasoner',
     reasoningEffort: 'max',
   })
-  assert.match(sent.at(-1)!.text, /已切换模型/)
+  assert.match(sent.at(-1)!.text, /Switched model to/)
 })
 
 test('/last returns previous Q/A via apiProxy history', async () => {
   const sent: SentMessage[] = []
   const followups: UserMessage[] = []
-  const agent = makeAgent('live-last', followups, { title: '有历史' })
+  const agent = makeAgent('live-last', followups, { title: 'Has History' })
   ;(agent as any).session.events = [
     {
       type: 'user/message',
-      data: { source: { kind: 'user' }, content: [{ type: 'text', text: '手机续接前的问题' }] },
+      data: { source: { kind: 'user' }, content: [{ type: 'text', text: 'question from phone before' }] },
     },
     {
       type: 'assistant/message',
-      data: { message: { content: [{ type: 'text', text: '电脑上的回答' }] } },
+      data: { message: { content: [{ type: 'text', text: 'answer from computer' }] } },
     },
   ]
   const ctx = {
@@ -569,13 +569,13 @@ test('/last returns previous Q/A via apiProxy history', async () => {
                 {
                   event: {
                     type: 'user/message',
-                    data: { source: { kind: 'user' }, content: [{ type: 'text', text: '手机续接前的问题' }] },
+                    data: { source: { kind: 'user' }, content: [{ type: 'text', text: 'question from phone before' }] },
                   },
                 },
                 {
                   event: {
                     type: 'assistant/message',
-                    data: { message: { content: [{ type: 'text', text: '电脑上的回答' }] } },
+                    data: { message: { content: [{ type: 'text', text: 'answer from computer' }] } },
                   },
                 },
               ],
@@ -605,9 +605,9 @@ test('/last returns previous Q/A via apiProxy history', async () => {
   })
   await bridge.processUpdate(messageUpdate(10, 1, '/last', 2))
   const body = sent.at(-1)!.text
-  assert.match(body, /上次对话|用户/)
-  assert.match(body, /手机续接前的问题/)
-  assert.match(body, /电脑上的回答/)
+  assert.match(body, /Last conversation|[User]/)
+  assert.match(body, /question from phone before/)
+  assert.match(body, /answer from computer/)
 })
 
 test('/unbind clears binding without needing create/dispose', async () => {

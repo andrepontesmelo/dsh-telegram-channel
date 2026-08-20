@@ -1,64 +1,64 @@
 export const MSG = {
-  DENIED: '无权限。',
+  DENIED: 'Access denied.',
   WELCOME: [
-    '你好，这是 DeepSeek Harness 的手机遥控器。',
-    '本机会话是真相源：请先在 Web 打开对话，再用 /sessions 选择工作区 → 会话并附着。',
-    '发送 /help 查看命令。',
+    'Hi, this is the DeepSeek Harness phone remote.',
+    'The local session is the source of truth: open a conversation in Web first, then use /sessions to pick a workspace → session and attach.',
+    'Send /help to see available commands.',
   ].join('\n'),
   HELP: [
-    '/sessions — 按工作区列出本机会话（与 Web 对齐，排除归档）并附着',
-    '/last — 查看绑定会话的上次问答（便于续接）',
-    '/model — 切换当前绑定会话的模型（下一回合生效）',
-    '/status — 查看当前绑定',
-    '/unbind — 断开绑定（不关闭本机会话）',
-    '/help — 显示帮助',
+    '/sessions — list local sessions by workspace (Web-aligned, archived excluded) and attach',
+    '/last — view the bound session\u2019s last Q&A (to continue the context)',
+    '/model — switch the model of the currently bound session (takes effect next turn)',
+    '/status — show the current binding',
+    '/unbind — detach the phone binding (does NOT close the local session)',
+    '/help — show this help',
     '',
-    '绑定后直接发文字，消息会进入该本机会话；Web 与手机看到同一条轨迹。',
-    '仅白名单用户可用。无会话时请先在 dsh web 开对话或保留历史会话。',
+    'After attaching, just send text and it enters that local session; Web and phone see the same trajectory.',
+    'Only allowlisted users can use this. If there are no sessions, open a conversation in dsh web or keep a historical session.',
   ].join('\n'),
-  NEED_BIND: '尚未绑定本机会话。请先发送 /sessions 选择一个。',
-  NO_SESSIONS: '当前没有可附着的本机会话（已排除归档与空白会话）。请先在 Web（dsh web）打开或继续一个对话，再发 /sessions。',
+  NEED_BIND: 'No local session bound yet. Send /sessions to choose one.',
+  NO_SESSIONS: 'There are no attachable local sessions right now (archived and blank sessions excluded). Open or continue a conversation in Web (dsh web) first, then send /sessions.',
   NO_SESSIONS_IN_WS(title: string): string {
-    return `工作区「${title}」下没有可附着的会话。`
+    return `Workspace \u201c${title}\u201d has no attachable sessions.`
   },
   /** @deprecated use NO_SESSIONS */
-  NO_LIVE: '当前没有可附着的本机会话。请先在 Web（dsh web）打开或继续一个对话，再发 /sessions。',
-  PICKER_STALE: '列表已过期，请重新发送 /sessions。',
-  RESUME_FAILED: '无法附着该会话（resume 失败）。请确认会话存在于 Web，或先在电脑打开后再试。',
+  NO_LIVE: 'There are no attachable local sessions right now. Open or continue a conversation in Web (dsh web) first, then send /sessions.',
+  PICKER_STALE: 'The list is out of date — please send /sessions again.',
+  RESUME_FAILED: 'Could not attach that session (resume failed). Make sure the session exists in Web, or open it on the computer first and try again.',
   BOUND(label: string): string {
-    return `已附着本机会话：${label}\n此后消息将进入该会话（与 Web 同轨迹）。\n需要续接时可点「查看上次对话」，或发送 /last。`
+    return `Attached to local session: ${label}\nMessages from now on enter that session (same trajectory as Web).\nTo continue the context, tap \u201cView last conversation\u201d or send /last.`
   },
-  UNBOUND: '已断开绑定。本机会话仍在运行。',
-  STATUS_NONE: '当前未绑定任何本机会话。发送 /sessions 选择。',
+  UNBOUND: 'Binding detached. The local session is still running.',
+  STATUS_NONE: 'No local session is bound right now. Send /sessions to choose one.',
   STATUS_BOUND(label: string): string {
-    return `当前绑定：${label}`
+    return `Currently bound: ${label}`
   },
   STATUS_BOUND_COLD(label: string): string {
-    return `当前绑定：${label}\n（会话当前未在内存中运行；发消息时会自动 resume。）`
+    return `Currently bound: ${label}\n(session is not in memory right now; it will resume automatically when you send a message.)`
   },
-  GONE: '绑定的会话已不可用。请重新 /sessions。',
-  LAST_FAILED: '无法读取上次对话。请确认已绑定，且本机 dsh web / apiProxy 可用。',
+  GONE: 'The bound session is no longer available. Please /sessions again.',
+  LAST_FAILED: 'Could not read the last conversation. Make sure a session is bound and dsh web / apiProxy is running on this machine.',
   MODEL_UNAVAILABLE(detail?: string): string {
-    const tip = '无法读取模型列表。请确认已绑定会话，且本机 dsh web 已加载 host-apiproxy。'
+    const tip = 'Could not read the model list. Make sure a session is bound and dsh web has host-apiproxy loaded.'
     if (!detail) return tip
-    return `${tip}\n详情：${detail}`
+    return `${tip}\nDetail: ${detail}`
   },
   MODEL_UNROUTABLE(current: string): string {
-    return `当前模型不可路由：${current}\n请在 Web 或本机配置可用 provider 后再试 /model。`
+    return `The current model is not routable: ${current}\nConfigure a usable provider in Web or on this machine, then try /model again.`
   },
   MODEL_EMPTY(current: string): string {
-    return `当前：${current}\n没有可切换的模型选项。`
+    return `Current: ${current}\nThere are no other models to switch to.`
   },
   MODEL_SET(selected: string): string {
-    return `已切换模型：${selected}\n下一回合生效。`
+    return `Switched model to: ${selected}\nTakes effect next turn.`
   },
   MODEL_FAILED(detail?: string): string {
-    const tip = '切换模型失败。请稍后重试或在 Web 中切换。'
+    const tip = 'Failed to switch the model. Try again later or switch in Web.'
     if (!detail) return tip
-    return `${tip}\n详情：${detail}`
+    return `${tip}\nDetail: ${detail}`
   },
   unknown(command: string): string {
-    return `未知命令 ${command}。发送 /help 查看可用命令。`
+    return `Unknown command ${command}. Send /help to see available commands.`
   },
 } as const
 

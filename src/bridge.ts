@@ -6,6 +6,7 @@ import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session/types'
 import { isAuthorized } from './auth.js'
 import {
   catalogFromLiveAgents,
+  createSession,
   loadCatalog,
   truncateButton,
   visibleSessionsForWorkspace,
@@ -56,6 +57,8 @@ interface PickerState {
   catalog?: CatalogSnapshot
   models?: ModelOption[]
   pendingModel?: ModelOption
+  /** 'new' turns workspace rows into create-and-attach actions (/new flow). */
+  mode?: 'attach' | 'new'
 }
 
 interface SessionLike {
@@ -134,6 +137,7 @@ export class TelegramBridge {
     void this.client.setMyCommands([
       { command: 'start', description: 'Welcome & usage' },
       { command: 'sessions', description: 'List sessions by workspace and attach' },
+      { command: 'new', description: 'Create a new blank session and attach it' },
       { command: 'last', description: 'View last Q&A (continue context)' },
       { command: 'model', description: 'Switch model of the bound session' },
       { command: 'status', description: 'Show current binding' },
@@ -195,6 +199,9 @@ export class TelegramBridge {
       case 'sessions':
         await this.sendWorkspacePicker(chatId)
         return
+      case 'new':
+        await this.handleNew(chatId)
+        return
       case 'last':
         await this.sendLastTurn(chatId)
         return
@@ -252,7 +259,10 @@ export class TelegramBridge {
     if (data.startsWith(WS_CB)) {
       const index = Number(data.slice(WS_CB.length))
       await this.client.answerCallbackQuery(cq.id)
-      await this.sendSessionPicker(chatId, index)
+      if (picker?.mode === 'new')
+        await this.createNewBound(chatId, cq.id, picker.workspaces[index])
+      else
+        await this.sendSessionPicker(chatId, index)
       return
     }
     if (data.startsWith(SID_CB)) {
@@ -334,7 +344,11 @@ export class TelegramBridge {
     return catalogFromLiveAgents(this.liveAgents(), this.ctx)
   }
 
-  private async sendWorkspacePicker(chatId: number, existing?: CatalogSnapshot): Promise<void> {
+  private async sendWorkspacePicker(
+    chatId: number,
+    existing?: CatalogSnapshot,
+    mode: 'attach' | 'new' = 'attach',
+  ): Promise<void> {
     const catalog = existing ?? await this.resolveCatalog()
     const workspaces = workspacesWithVisibleSessions(catalog)
     if (workspaces.length === 0) {
@@ -343,7 +357,7 @@ export class TelegramBridge {
       return
     }
     const shown = workspaces.slice(0, MAX_BUTTONS)
-    this.pickers.set(String(chatId), { workspaces: shown, sessions: [], catalog })
+    this.pickers.set(String(chatId), { workspaces: shown, sessions: [], catalog, mode })
     const keyboard: InlineKeyboardMarkup = {
       inline_keyboard: shown.map((ws, i) => ([{
         text: truncateButton(`${i + 1}. ${ws.title}`),
@@ -351,9 +365,11 @@ export class TelegramBridge {
       }])),
     }
     const body = [
-      catalog.complete
-        ? `Choose a workspace (${workspaces.length} total, Web-aligned, archived excluded):`
-        : `Choose a workspace (${workspaces.length} total) ⚠️ only running sessions (apiProxy not ready; full list needs plugin ≥0.3.2 and a dsh web restart):`,
+      mode === 'new'
+        ? `Create a new session — choose a workspace (${workspaces.length} total):`
+        : catalog.complete
+          ? `Choose a workspace (${workspaces.length} total, Web-aligned, archived excluded):`
+          : `Choose a workspace (${workspaces.length} total) ⚠️ only running sessions (apiProxy not ready; full list needs plugin ≥0.3.2 and a dsh web restart):`,
       '',
       ...shown.map((ws, i) => {
         const n = visibleSessionsForWorkspace(catalog, ws).length
@@ -361,7 +377,9 @@ export class TelegramBridge {
       }),
       workspaces.length > MAX_BUTTONS ? `\nOnly the first ${MAX_BUTTONS} workspaces are shown.` : '',
       '',
-      'Tap a button below to open that workspace\u2019s session list.',
+      mode === 'new'
+        ? 'Tap a workspace below to create a new blank session there and attach it.'
+        : 'Tap a button below to open that workspace\u2019s session list.',
     ].filter(Boolean).join('\n')
     await this.client.sendMessage(chatId, body, undefined, keyboard)
   }
@@ -425,6 +443,47 @@ export class TelegramBridge {
       : displayLabel(parts)
     this.bindings.set(String(chatId), { chatId, sessionId: String(agent.id), label })
     await this.client.answerCallbackQuery(callbackId, 'Attached')
+    await this.client.sendMessage(chatId, MSG.BOUND(label), undefined, lastContextKeyboard())
+  }
+
+  private async handleNew(chatId: number): Promise<void> {
+    const binding = this.bindings.get(String(chatId))
+    let target: WorkspaceRow | undefined
+    if (binding) {
+      const catalog = await this.resolveCatalog()
+      target = catalog.workspaces.find((ws) => ws.sessionIds?.includes(binding.sessionId))
+    }
+    if (!target) {
+      await this.sendWorkspacePicker(chatId, undefined, 'new')
+      return
+    }
+    await this.createNewBound(chatId, undefined, target)
+  }
+
+  private async createNewBound(
+    chatId: number,
+    callbackId: string | undefined,
+    workspace: WorkspaceRow | undefined,
+  ): Promise<void> {
+    await this.client.sendMessage(chatId, MSG.NEW_CREATING(workspace?.title ?? 'the default workspace'))
+    const created = await createSession(this.ctx, workspace?.id ? { workspaceId: workspace.id } : {})
+    if (!created?.sessionId) {
+      if (callbackId !== undefined)
+        await this.client.answerCallbackQuery(callbackId, 'Create failed')
+      await this.client.sendMessage(chatId, MSG.NEW_FAILED())
+      return
+    }
+    const agent = await this.ensureLiveAgent(created.sessionId)
+    if (!agent) {
+      if (callbackId !== undefined)
+        await this.client.answerCallbackQuery(callbackId, 'Cannot attach')
+      await this.client.sendMessage(chatId, MSG.RESUME_FAILED)
+      return
+    }
+    const label = displayLabel(describeAgent(agent, 0, this.ctx))
+    this.bindings.set(String(chatId), { chatId, sessionId: String(agent.id), label })
+    if (callbackId !== undefined)
+      await this.client.answerCallbackQuery(callbackId, 'Attached')
     await this.client.sendMessage(chatId, MSG.BOUND(label), undefined, lastContextKeyboard())
   }
 

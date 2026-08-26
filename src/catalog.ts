@@ -112,6 +112,18 @@ export async function loadCatalog(ctx: Context): Promise<CatalogSnapshot | undef
   return { workspaces, sessionsById, archivedIds, complete: true }
 }
 
+/** Create a blank session via apiProxy (Web's session.create contract). */
+export async function createSession(
+  ctx: Context,
+  opts: Record<string, unknown> = {},
+): Promise<{ sessionId?: string } | undefined> {
+  const api = resolveApiProxy(ctx)
+  const fn = api?.sessions?.create ?? api?.session?.create
+  if (typeof fn !== 'function') return undefined
+  const res = await fn({ rpcId: randomUUID(), payload: opts })
+  return unwrap<{ sessionId?: string }>(res)
+}
+
 /** Sessions visible under one workspace (Web-like filters). */
 export function visibleSessionsForWorkspace(
   catalog: CatalogSnapshot,

@@ -5,6 +5,10 @@ export type ApiProxySessions = {
         rpcId: string;
         payload: unknown;
     }) => Promise<unknown>;
+    create?: (req: {
+        rpcId: string;
+        payload: unknown;
+    }) => Promise<unknown>;
     history?: (req: {
         rpcId: string;
         payload: unknown;
@@ -26,6 +30,8 @@ export type ApiProxyLike = {
         }) => Promise<unknown>;
     };
     sessions?: ApiProxySessions;
+    /** Older naming kept for compatibility with `session.create`. */
+    session?: ApiProxySessions;
 };
 /**
  * Resolve host apiProxy without requiring Cordis inject.

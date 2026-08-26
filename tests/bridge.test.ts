@@ -24,6 +24,11 @@ function fakeClient(
       sent.push({ chatId, text, parseMode, replyMarkup })
       return { message_id: 1, date: 0, chat: { id: chatId, type: 'private' }, text }
     },
+    sendRichMessage: async (chatId, markdown) => {
+      // Record rich chunks like production: one message per chunk, rendered by Telegram.
+      sent.push({ chatId, text: markdown })
+      return { message_id: 1, date: 0, chat: { id: chatId, type: 'private' }, text: markdown }
+    },
     sendChatAction: async () => true,
     answerCallbackQuery: async () => true,
     setMyCommands: async () => true,
@@ -644,4 +649,152 @@ test('/unbind clears binding without needing create/dispose', async () => {
   await bridge.processUpdate(messageUpdate(10, 1, 'again', 3))
   assert.equal(sent.at(-1)?.text, MSG.NEED_BIND)
   assert.equal(followups.length, 0)
+})
+
+function newFlowCtx(sent: SentMessage[], answers: string[], opts?: { createResults?: string[] }) {
+  const createdIds = opts?.createResults ?? ['created-1']
+  const createPayloads: unknown[] = []
+  let createCount = 0
+  const ctx = {
+    logger: { info() {}, warn() {}, error() {} },
+    agents: {
+      list: () => [],
+      roots: () => [],
+      // Fabricates a live agent for any id so ensureLiveAgent resumes instantly.
+      get: (id: unknown) => makeAgent(String(id), []),
+    },
+    apiProxy: {
+      workspace: {
+        list: async () => rpcOk({
+          items: [{ workspaceId: 'w1', path: '/proj/s1', title: 'Alpha', sessionIds: ['s1'] }],
+          archivedSessionIds: [],
+        }),
+      },
+      sessions: {
+        list: async () => rpcOk({
+          items: [
+            {
+              sessionId: 's1',
+              updatedAt: 2,
+              running: true,
+              blank: false,
+              cwd: '/proj/s1',
+              projections: { values: { title: 'Session One' } },
+            },
+          ],
+        }),
+        create: async (req: { rpcId: string; payload: unknown }) => {
+          createPayloads.push(req.payload)
+          const sessionId = createdIds[createCount] ?? `created-${createCount + 1}`
+          createCount += 1
+          return rpcOk({ sessionId })
+        },
+      },
+    },
+    on() { return () => {} },
+  }
+  const client = fakeClient(sent, {
+    answerCallbackQuery: async (id: string, text?: string) => {
+      answers.push(text ?? '')
+      return true
+    },
+  })
+  return { ctx, client, createPayloads }
+}
+
+test('/new without binding opens picker in create mode; tap creates and attaches', async () => {
+  const sent: SentMessage[] = []
+  const answers: string[] = []
+  const { ctx, client, createPayloads } = newFlowCtx(sent, answers)
+  const bridge = new TelegramBridge(ctx as any, {
+    token: 't',
+    allowedUserIds: [1],
+    allowAllUsers: false,
+    client,
+    sleep: async () => {},
+  })
+  await bridge.processUpdate(messageUpdate(10, 1, '/new'))
+  const pickerMsg = sent.at(-1)!
+  assert.match(pickerMsg.text, /Create a new session — choose a workspace/)
+  assert.match(pickerMsg.text, /create a new blank session there and attach it\./)
+  assert.equal(pickerMsg.replyMarkup?.inline_keyboard?.[0]?.[0]?.callback_data, 'ws:0')
+  await bridge.processUpdate({
+    update_id: 2,
+    callback_query: {
+      id: 'cq-new',
+      from: { id: 1 },
+      message: { message_id: 1, date: 0, chat: { id: 10, type: 'private' } },
+      data: 'ws:0',
+    },
+  })
+  assert.deepEqual(createPayloads, [{ workspaceId: 'w1' }])
+  assert.match(sent.at(-2)!.text, /Creating a new session in \u201cAlpha\u201d\u2026/)
+  assert.match(sent.at(-1)!.text, /Attached to local session/)
+  assert.equal(answers.at(-1), 'Attached')
+})
+
+test('/new with binding inside a known workspace creates directly in that workspace', async () => {
+  const sent: SentMessage[] = []
+  const answers: string[] = []
+  const { ctx, client, createPayloads } = newFlowCtx(sent, answers, { createResults: ['created-9'] })
+  const bridge = new TelegramBridge(ctx as any, {
+    token: 't',
+    allowedUserIds: [1],
+    allowAllUsers: false,
+    client,
+    sleep: async () => {},
+  })
+  // Bind s1 first via the normal /sessions flow.
+  await bridge.processUpdate(messageUpdate(10, 1, '/sessions'))
+  await bridge.processUpdate({
+    update_id: 2,
+    callback_query: {
+      id: 'cq-ws',
+      from: { id: 1 },
+      message: { message_id: 1, date: 0, chat: { id: 10, type: 'private' } },
+      data: 'ws:0',
+    },
+  })
+  assert.equal(sent.at(-1)!.replyMarkup?.inline_keyboard?.[0]?.[0]?.callback_data, 'sid:0')
+  await bridge.processUpdate({
+    update_id: 3,
+    callback_query: {
+      id: 'cq-sid',
+      from: { id: 1 },
+      message: { message_id: 2, date: 0, chat: { id: 10, type: 'private' } },
+      data: 'sid:0',
+    },
+  })
+  assert.match(sent.at(-1)!.text, /Attached to local session/)
+  // Now /new should skip the picker and spawn directly in workspace w1.
+  await bridge.processUpdate(messageUpdate(10, 1, '/new', 4))
+  assert.deepEqual(createPayloads, [{ workspaceId: 'w1' }])
+  assert.match(sent.at(-2)!.text, /Creating a new session in \u201cAlpha\u201d\u2026/)
+  assert.match(sent.at(-1)!.text, /Attached to local session/)
+})
+
+test('/new reports failure when session.create yields no sessionId', async () => {
+  const sent: SentMessage[] = []
+  const answers: string[] = []
+  const { ctx, client } = newFlowCtx(sent, answers)
+  ;((ctx.apiProxy as any).sessions as any).create = async () => ({ result: { ok: true, value: {} } })
+  const bridge = new TelegramBridge(ctx as any, {
+    token: 't',
+    allowedUserIds: [1],
+    allowAllUsers: false,
+    client,
+    sleep: async () => {},
+  })
+  await bridge.processUpdate(messageUpdate(10, 1, '/new'))
+  await bridge.processUpdate({
+    update_id: 2,
+    callback_query: {
+      id: 'cq-fail',
+      from: { id: 1 },
+      message: { message_id: 1, date: 0, chat: { id: 10, type: 'private' } },
+      data: 'ws:0',
+    },
+  })
+  assert.equal(answers.at(-1), 'Create failed')
+  assert.equal(sent.at(-1)?.text, MSG.NEW_FAILED())
 })

@@ -24,6 +24,10 @@ export interface CatalogSnapshot {
 }
 /** Load workspaces + sessions aligned with Web UI (via apiProxy when available). */
 export declare function loadCatalog(ctx: Context): Promise<CatalogSnapshot | undefined>;
+/** Create a blank session via apiProxy (Web's session.create contract). */
+export declare function createSession(ctx: Context, opts?: Record<string, unknown>): Promise<{
+    sessionId?: string;
+} | undefined>;
 /** Sessions visible under one workspace (Web-like filters). */
 export declare function visibleSessionsForWorkspace(catalog: CatalogSnapshot, workspace: WorkspaceRow): SessionRow[];
 export declare function workspacesWithVisibleSessions(catalog: CatalogSnapshot): WorkspaceRow[];

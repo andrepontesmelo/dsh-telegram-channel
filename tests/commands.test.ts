@@ -18,6 +18,19 @@ test('parse slash commands for remote control', () => {
   assert.equal(parseCommand('/create').type, 'new')
   assert.equal(parseCommand('/new@MyBot').type, 'new')
   assert.equal(parseCommand('/foo').type, 'unknown')
+  assert.deepEqual(parseCommand('/foo'), { type: 'unknown', command: '/foo', text: '/foo' })
+  // Passthrough carriers: the original text must survive verbatim for
+  // forwarding into the bound session.
+  assert.deepEqual(parseCommand('/wayfinder focus on tests'), {
+    type: 'unknown',
+    command: '/wayfinder',
+    text: '/wayfinder focus on tests',
+  })
+  assert.deepEqual(parseCommand('/skill@MyBot do it'), {
+    type: 'unknown',
+    command: '/skill',
+    text: '/skill@MyBot do it',
+  })
   assert.equal(parseCommand('hello').type, 'plain')
 })
 

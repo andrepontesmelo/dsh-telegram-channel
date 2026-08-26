@@ -798,3 +798,97 @@ test('/new reports failure when session.create yields no sessionId', async () =>
   assert.equal(answers.at(-1), 'Create failed')
   assert.equal(sent.at(-1)?.text, MSG.NEW_FAILED())
 })
+
+function bindContext(agent: ReturnType<typeof makeAgent>) {
+  return {
+    logger: { info() {}, warn() {}, error() {} },
+    agents: {
+      list: () => [agent],
+      roots: () => [agent],
+      get: (id: ReturnType<typeof SessionId>) =>
+        String(id) === String(agent.id) ? agent : undefined,
+    },
+    on() {
+      return () => {}
+    },
+  }
+}
+
+async function bindLiveAgent(
+  bridge: TelegramBridge,
+  agentId: string,
+): Promise<void> {
+  await bridge.processUpdate({
+    update_id: 2,
+    callback_query: {
+      id: 'cq1',
+      from: { id: 1 },
+      message: { message_id: 1, date: 0, chat: { id: 10, type: 'private' }, text: 'picker' },
+      data: `${BIND_CB_PREFIX}${agentId}`,
+    },
+  })
+}
+
+test('unknown slash gesture forwards into bound session (skill invocation)', async () => {
+  const sent: SentMessage[] = []
+  const followups: UserMessage[] = []
+  const agent = makeAgent('live-skl', followups)
+  const bridge = new TelegramBridge(bindContext(agent) as any, {
+    token: 't',
+    allowedUserIds: [1],
+    allowAllUsers: false,
+    client: fakeClient(sent),
+    sleep: async () => {},
+  })
+
+  await bindLiveAgent(bridge, 'live-skl')
+  await bridge.processUpdate(messageUpdate(10, 1, '/wayfinder focus on tests', 3))
+
+  assert.equal(followups.length, 1)
+  const block = followups[0]!.content[0] as { type: string; text?: string }
+  assert.equal(block.type, 'text')
+  assert.equal(block.text, '/wayfinder focus on tests')
+  // No ack beyond the bind confirmation; in particular no unknown-command notice.
+  assert.ok(!sent.some((m) => m.text.includes('Unknown command')))
+})
+
+test('unknown slash gesture without binding still prompts NEED_BIND', async () => {
+  const sent: SentMessage[] = []
+  const ctx = {
+    logger: { info() {}, warn() {}, error() {} },
+    agents: { list: () => [], roots: () => [], get: () => undefined },
+    on() {
+      return () => {}
+    },
+  }
+  const bridge = new TelegramBridge(ctx as any, {
+    token: 't',
+    allowedUserIds: [1],
+    allowAllUsers: false,
+    client: fakeClient(sent),
+    sleep: async () => {},
+  })
+
+  await bridge.processUpdate(messageUpdate(10, 1, '/wayfinder focus', 2))
+  assert.equal(sent[0]?.text, MSG.NEED_BIND)
+})
+
+test('reserved commands stay intercepted even when bound', async () => {
+  const sent: SentMessage[] = []
+  const followups: UserMessage[] = []
+  const agent = makeAgent('live-rsv', followups)
+  const bridge = new TelegramBridge(bindContext(agent) as any, {
+    token: 't',
+    allowedUserIds: [1],
+    allowAllUsers: false,
+    client: fakeClient(sent),
+    sleep: async () => {},
+  })
+
+  await bindLiveAgent(bridge, 'live-rsv')
+  await bridge.processUpdate(messageUpdate(10, 1, '/help', 3))
+  assert.equal(sent.at(-1)?.text, MSG.HELP)
+  await bridge.processUpdate(messageUpdate(10, 1, '/status', 4))
+  assert.match(sent.at(-1)!.text, /Currently bound/)
+  assert.equal(followups.length, 0)
+})

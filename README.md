@@ -135,6 +135,7 @@ curl -fsSL https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master
 | `/status` | 当前绑定 |
 | `/unbind` | 只断开手机，**不关**电脑会话 |
 | `/help` | 帮助 |
+| 其它未识别的 `/命令` | 原样转发进绑定会话作为用户消息（手机端调用 skill 的方式，如 `/wayfinder …`）；保留命令仍由机器人拦截，不发确认消息 |
 
 ---
 
@@ -249,6 +250,7 @@ Telegram **mobile remote** for DeepSeek Harness Web sessions. Desktop/Web is the
 
 **Fork additions ([@andrepontesmelo](https://github.com/andrepontesmelo)):**
 - `/new` (alias `/create`) — create a blank session through `session.create` and attach it immediately; targets the currently bound workspace, otherwise reuses the workspace picker in **create mode**. Brand-new sessions are intentionally invisible to `/sessions` (same blank-filter as Web), so this is the only phone-side way to reach them.
+- **Skill gesture passthrough** — any slash token that is not a reserved bot command (`start help sessions list last context model status unbind disconnect`, plus `/new`/`/create`) is forwarded verbatim into the bound session as a user message via the same path as plain text, exactly as if typed in Web — so DSH skills are invocable from the phone (`/wayfinder …`). Forwarded gestures are not acknowledged with a separate message; without a binding you get the usual NEED_BIND prompt. Bot `setMyCommands` is untouched (gestures are not Telegram bot commands).
 
 ### Screenshots
 

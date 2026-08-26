@@ -217,7 +217,9 @@ export class TelegramBridge {
         await this.client.sendMessage(chatId, MSG.UNBOUND)
         return
       case 'unknown':
-        await this.client.sendMessage(chatId, MSG.unknown(parsed.command))
+        // Not a reserved bot command: forward the gesture into the bound
+        // session as a user message so the harness injects the skill.
+        await this.followupBound(chatId, parsed.text)
         return
       case 'plain':
         await this.followupBound(chatId, parsed.text)

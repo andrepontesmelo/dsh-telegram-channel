@@ -14,6 +14,7 @@ export const MSG = {
     '/unbind — detach the phone binding (does NOT close the local session)',
     '/help — show this help',
     '',
+    'Any other /command (a skill gesture, e.g. /wayfinder) is passed into the bound session as if typed in Web — reserved bot commands stay on the phone.',
     'After attaching, just send text and it enters that local session; Web and phone see the same trajectory.',
     'Only allowlisted users can use this. If there are no sessions, open a conversation in dsh web or keep a historical session.',
   ].join('\n'),
@@ -65,9 +66,6 @@ export const MSG = {
     const tip = 'Failed to switch the model. Try again later or switch in Web.'
     if (!detail) return tip
     return `${tip}\nDetail: ${detail}`
-  },
-  unknown(command: string): string {
-    return `Unknown command ${command}. Send /help to see available commands.`
   },
 } as const
 

@@ -8,6 +8,10 @@ Telegram **手机遥控器** for DeepSeek Harness：附着本机正在跑的 Web
 
 **发现：** [dsh-plugin topic](https://github.com/topics/dsh-plugin) · 安装：`dsh plugin --profile web add github:hi-wenw/dsh-telegram-channel`
 
+> 🍴 **Fork maintained by [@andrepontesmelo](https://github.com/andrepontesmelo)** — lineage: [hi-wenw/dsh-telegram-channel](https://github.com/hi-wenw/dsh-telegram-channel) (original) → [psyrtsov](https://github.com/psyrtsov/dsh-telegram-channel) (English UI v0.4.0) → **this fork**.
+>
+> **Added here:** `/new` — creates a brand-new blank session through the Web's own `session.create` RPC and attaches it instantly (`/create` alias works too). Already bound? It spawns inside the same workspace. Not bound yet? The workspace picker flips into *create mode*: tap a workspace, get a fresh attached session.
+
 **Keywords：** Telegram · Bot · Mobile · Remote · DSH · Cordis · dsh-plugin · sessions · bind
 
 ---
@@ -120,11 +124,12 @@ curl -fsSL https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master
 4. 需要换模型时：`/model` → 点选（与 Web 同 API，下一回合生效）  
 5. 续接上下文：附着后点 **查看上次对话**，或发 `/last`
 
-输入框旁的 **/** 菜单应有：`start` `sessions` `last` `model` `status` `unbind` `help`。
+输入框旁的 **/** 菜单应有：`start` `sessions` `new` `last` `model` `status` `unbind` `help`。
 
 | 命令 | 作用 |
 |---|---|
 | `/sessions` | 先列工作区，再列该工作区会话（与 Web 对齐，排除归档/空白/子代理）；冷会话附着时会自动 resume |
+| `/new` | （本分支新增）创建**全新空白会话**并附着：已绑定时在当前工作区内创建；未绑定时选择器切换为“创建模式”；别名 `/create` |
 | `/last` | 查看绑定会话的**上次问答**（附着后也会出现「查看上次对话」按钮） |
 | `/model` | 切换当前绑定会话的模型 |
 | `/status` | 当前绑定 |
@@ -241,6 +246,9 @@ dsh plugin --profile web add github:hi-wenw/dsh-telegram-channel
 ### What this is
 
 Telegram **mobile remote** for DeepSeek Harness Web sessions. Desktop/Web is the source of truth; the phone **attaches** (no parallel hidden agent). `/sessions` is **workspace → session** (Web-aligned, archived excluded). `/model` switches the bound session’s model for the next turn.
+
+**Fork additions ([@andrepontesmelo](https://github.com/andrepontesmelo)):**
+- `/new` (alias `/create`) — create a blank session through `session.create` and attach it immediately; targets the currently bound workspace, otherwise reuses the workspace picker in **create mode**. Brand-new sessions are intentionally invisible to `/sessions` (same blank-filter as Web), so this is the only phone-side way to reach them.
 
 ### Screenshots
 

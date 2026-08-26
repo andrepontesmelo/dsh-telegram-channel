@@ -892,3 +892,148 @@ test('reserved commands stay intercepted even when bound', async () => {
   assert.match(sent.at(-1)!.text, /Currently bound/)
   assert.equal(followups.length, 0)
 })
+
+
+// --- typing keepalive (sustained indicator while a turn is busy) ---
+
+function typingHarness(sent: SentMessage[], actions: number[]) {
+  const followups: UserMessage[] = []
+  const agent = makeAgent('live-typing', followups)
+  let sessionListener:
+    | ((session: { id: ReturnType<typeof SessionId> }, event: unknown) => void)
+    | undefined
+  const ctx = {
+    logger: { info() {}, warn() {}, error() {} },
+    agents: {
+      list: () => [agent],
+      roots: () => [agent],
+      get: (id: ReturnType<typeof SessionId>) => (String(id) === 'live-typing' ? agent : undefined),
+    },
+    on(event: string, listener: (session: { id: ReturnType<typeof SessionId> }, event: unknown) => void) {
+      if (event === 'session/event') sessionListener = listener
+      return () => {}
+    },
+  }
+  const bridge = new TelegramBridge(ctx as any, {
+    token: 't',
+    allowedUserIds: [1],
+    allowAllUsers: false,
+    client: fakeClient(sent, {
+      sendChatAction: async (chatId: number) => {
+        actions.push(chatId)
+        return true
+      },
+    }),
+    sleep: async () => {},
+  })
+  // Drain microtasks so fire-and-forget event handling completes before asserts.
+  const flush = () => new Promise<void>((resolve) => setImmediate(resolve))
+  const emit = (event: unknown): Promise<void> => {
+    return Promise.resolve(
+      sessionListener?.({ id: SessionId('live-typing') }, event),
+    ).then(flush)
+  }
+  return { bridge, emit, flush }
+}
+
+async function bindTypingChat(bridge: TelegramBridge): Promise<void> {
+  await bridge.processUpdate({
+    update_id: 2,
+    callback_query: {
+      id: 'cq-typing',
+      from: { id: 1 },
+      message: { message_id: 1, date: 0, chat: { id: 10, type: 'private' }, text: 'picker' },
+      data: `${BIND_CB_PREFIX}live-typing`,
+    },
+  })
+}
+
+const TURN_START = { type: 'turn/start', data: { turn: 0 } }
+const TURN_END = { type: 'turn/end', data: { turn: 0, reason: 'completed' } }
+
+test('typing keepalive repeats sendChatAction while busy, stops on turn/end', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const sent: SentMessage[] = []
+  const actions: number[] = []
+  const { bridge, emit } = typingHarness(sent, actions)
+  bridge.start()
+  await bindTypingChat(bridge)
+
+  await emit(TURN_START)
+  assert.equal(actions.length, 1) // immediate indicator from turn/start itself
+
+  for (let i = 0; i < 3; i++) {
+    t.mock.timers.tick(4000)
+    await new Promise((resolve) => setImmediate(resolve))
+  }
+  assert.equal(actions.length, 4) // one repeat per ~4s window while the turn stays busy
+  assert.ok(actions.every((chatId) => chatId === 10))
+
+  await emit(TURN_END)
+  t.mock.timers.tick(40_000)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(actions.length, 4) // zero calls after the terminal event
+
+  await bridge.stop()
+  t.mock.timers.reset()
+})
+
+test('unbind clears typing keepalive timers', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const sent: SentMessage[] = []
+  const actions: number[] = []
+  const { bridge, emit } = typingHarness(sent, actions)
+  bridge.start()
+  await bindTypingChat(bridge)
+
+  await emit(TURN_START)
+  const beforeUnbind = actions.length
+  assert.equal(beforeUnbind >= 1, true)
+
+  await bridge.processUpdate(messageUpdate(10, 1, '/unbind', 5))
+  const after = actions.length
+
+  t.mock.timers.tick(12_000)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(actions.length, after) // no repeats once unbound
+
+  await bridge.stop()
+  t.mock.timers.reset()
+})
+
+test('bridge.stop clears typing keepalive timers', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const sent: SentMessage[] = []
+  const actions: number[] = []
+  const { bridge, emit } = typingHarness(sent, actions)
+  bridge.start()
+  await bindTypingChat(bridge)
+
+  await emit(TURN_START)
+  const beforeStop = actions.length
+  assert.equal(beforeStop >= 1, true)
+
+  await bridge.stop()
+  t.mock.timers.tick(12_000)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(actions.length, beforeStop) // stop() left no timer behind
+  t.mock.timers.reset()
+})
+
+test('typing keepalive hard-caps at ~15 minutes without turn/end', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const sent: SentMessage[] = []
+  const actions: number[] = []
+  const { bridge, emit } = typingHarness(sent, actions)
+  bridge.start()
+  await bindTypingChat(bridge)
+
+  await emit(TURN_START)
+  // ceil(15min / 4s) = 225 keepalive fires + 1 initial send = 226, then silence.
+  for (let i = 0; i < 250; i++) t.mock.timers.tick(4000)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(actions.length, 226)
+
+  await bridge.stop()
+  t.mock.timers.reset()
+})

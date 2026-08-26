@@ -73,6 +73,11 @@ const MODEL_CB = 'mdl:'
 const EFFORT_CB = 'eff:'
 const BACK_MODEL_CB = 'mb'
 const MAX_BUTTONS = 40
+/** Telegram typing indicators expire after ~5s; resend just inside that window while a turn is busy. */
+const TYPING_KEEPALIVE_MS = 4_000
+/** Hard cap so a missed 'turn/end' cannot tick forever. */
+const TYPING_KEEPALIVE_CAP_MS = 15 * 60_000
+const TYPING_KEEPALIVE_MAX_TICKS = Math.ceil(TYPING_KEEPALIVE_CAP_MS / TYPING_KEEPALIVE_MS)
 
 function lastContextKeyboard(): InlineKeyboardMarkup {
   return {
@@ -108,6 +113,8 @@ export class TelegramBridge {
   private readonly pickers = new Map<string, PickerState>()
   /** chatId → model awaiting reasoning-effort pick (kept outside picker so list refreshes won't drop it). */
   private readonly pendingModels = new Map<string, ModelOption>()
+  /** chatId → live typing-keepalive timer (armed on 'turn/start', disarmed on 'turn/end'). */
+  private readonly typingTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private polling = false
   private offset: number | undefined
   private pollPromise: Promise<void> | undefined
@@ -166,6 +173,7 @@ export class TelegramBridge {
     this.bindings.clear()
     this.pickers.clear()
     this.pendingModels.clear()
+    this.stopAllTypingKeepalives()
     if (this.pollPromise) {
       await this.pollPromise.catch(() => {})
       this.pollPromise = undefined
@@ -214,6 +222,7 @@ export class TelegramBridge {
       case 'unbind':
         this.bindings.delete(String(chatId))
         this.pickers.delete(String(chatId))
+        this.stopTypingKeepalive(chatId)
         await this.client.sendMessage(chatId, MSG.UNBOUND)
         return
       case 'unknown':
@@ -443,6 +452,7 @@ export class TelegramBridge {
     const label = row.title && row.title !== row.sessionId
       ? displayLabel({ ...parts, title: row.title })
       : displayLabel(parts)
+    this.stopTypingKeepalive(chatId) // binding replaced: the old session must not keep typing for this chat
     this.bindings.set(String(chatId), { chatId, sessionId: String(agent.id), label })
     await this.client.answerCallbackQuery(callbackId, 'Attached')
     await this.client.sendMessage(chatId, MSG.BOUND(label), undefined, lastContextKeyboard())
@@ -515,6 +525,7 @@ export class TelegramBridge {
     const agent = await this.ensureLiveAgent(binding.sessionId)
     if (!agent) {
       this.bindings.delete(String(chatId))
+      this.stopTypingKeepalive(chatId)
       await this.client.sendMessage(chatId, MSG.GONE)
       return
     }
@@ -671,6 +682,7 @@ export class TelegramBridge {
     const agent = await this.ensureLiveAgent(binding.sessionId)
     if (!agent) {
       this.bindings.delete(String(chatId))
+      this.stopTypingKeepalive(chatId)
       await this.client.sendMessage(chatId, MSG.GONE)
       return
     }
@@ -732,6 +744,44 @@ export class TelegramBridge {
     ])
   }
 
+  /** Re-send 'typing' every TYPING_KEEPALIVE_MS until turn/end, unbind, rebind, or hard cap. */
+  private startTypingKeepalive(chatId: number): void {
+    this.stopTypingKeepalive(chatId)
+    const key = String(chatId)
+    let ticks = 0
+    const tick = (): void => {
+      if (!this.typingTimers.has(key)) return // disarmed between schedule and fire
+      if (ticks >= TYPING_KEEPALIVE_MAX_TICKS) {
+        // Hard cap: a missed 'turn/end' must not tick forever.
+        this.stopTypingKeepalive(chatId)
+        this.ctx.logger.warn(`dsh-telegram-channel: typing keepalive hit ${TYPING_KEEPALIVE_CAP_MS}ms cap for chat ${key}`)
+        return
+      }
+      ticks += 1
+      const timer = setTimeout(tick, TYPING_KEEPALIVE_MS)
+      this.typingTimers.set(key, timer)
+      void Promise.resolve(this.client.sendChatAction(chatId, 'typing')).catch((err) => {
+        this.ctx.logger.warn(`dsh-telegram-channel: typing keepalive failed for chat ${key}: ${this.redact(err)}`)
+      })
+    }
+    const first = setTimeout(tick, TYPING_KEEPALIVE_MS)
+    this.typingTimers.set(key, first)
+  }
+
+  private stopTypingKeepalive(chatId: number): void {
+    const key = String(chatId)
+    const timer = this.typingTimers.get(key)
+    if (timer !== undefined) {
+      clearTimeout(timer)
+      this.typingTimers.delete(key)
+    }
+  }
+
+  private stopAllTypingKeepalives(): void {
+    for (const timer of this.typingTimers.values()) clearTimeout(timer)
+    this.typingTimers.clear()
+  }
+
   private async onSessionEvent(session: SessionLike, event: SessionEvent): Promise<void> {
     const id = String(session.id)
     const targets = [...this.bindings.values()].filter((b) => b.sessionId === id)
@@ -739,6 +789,14 @@ export class TelegramBridge {
 
     if (event.type === 'turn/start') {
       await Promise.all(targets.map((b) => this.client.sendChatAction(b.chatId, 'typing')))
+      for (const b of targets) this.startTypingKeepalive(b.chatId)
+      return
+    }
+
+    // 'turn/end' is the only terminal transition in SessionEventMap — it closes
+    // the turn regardless of TurnEndReason, so the indicator stops here.
+    if (event.type === 'turn/end') {
+      for (const b of targets) this.stopTypingKeepalive(b.chatId)
       return
     }
 

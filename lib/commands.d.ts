@@ -1,21 +1,23 @@
 export declare const MSG: {
-    readonly DENIED: "无权限。";
+    readonly DENIED: "Access denied.";
     readonly WELCOME: string;
     readonly HELP: string;
-    readonly NEED_BIND: "尚未绑定本机会话。请先发送 /sessions 选择一个。";
-    readonly NO_SESSIONS: "当前没有可附着的本机会话（已排除归档与空白会话）。请先在 Web（dsh web）打开或继续一个对话，再发 /sessions。";
+    readonly NEED_BIND: "No local session bound yet. Send /sessions to choose one.";
+    readonly NO_SESSIONS: "There are no attachable local sessions right now (archived and blank sessions excluded). Open or continue a conversation in Web (dsh web) first, then send /sessions.";
     readonly NO_SESSIONS_IN_WS: (title: string) => string;
     /** @deprecated use NO_SESSIONS */
-    readonly NO_LIVE: "当前没有可附着的本机会话。请先在 Web（dsh web）打开或继续一个对话，再发 /sessions。";
-    readonly PICKER_STALE: "列表已过期，请重新发送 /sessions。";
-    readonly RESUME_FAILED: "无法附着该会话（resume 失败）。请确认会话存在于 Web，或先在电脑打开后再试。";
+    readonly NO_LIVE: "There are no attachable local sessions right now. Open or continue a conversation in Web (dsh web) first, then send /sessions.";
+    readonly PICKER_STALE: "The list is out of date — please send /sessions again.";
+    readonly NEW_CREATING: (title: string) => string;
+    readonly NEW_FAILED: (detail?: string) => string;
+    readonly RESUME_FAILED: "Could not attach that session (resume failed). Make sure the session exists in Web, or open it on the computer first and try again.";
     readonly BOUND: (label: string) => string;
-    readonly UNBOUND: "已断开绑定。本机会话仍在运行。";
-    readonly STATUS_NONE: "当前未绑定任何本机会话。发送 /sessions 选择。";
+    readonly UNBOUND: "Binding detached. The local session is still running.";
+    readonly STATUS_NONE: "No local session is bound right now. Send /sessions to choose one.";
     readonly STATUS_BOUND: (label: string) => string;
     readonly STATUS_BOUND_COLD: (label: string) => string;
-    readonly GONE: "绑定的会话已不可用。请重新 /sessions。";
-    readonly LAST_FAILED: "无法读取上次对话。请确认已绑定，且本机 dsh web / apiProxy 可用。";
+    readonly GONE: "The bound session is no longer available. Please /sessions again.";
+    readonly LAST_FAILED: "Could not read the last conversation. Make sure a session is bound and dsh web / apiProxy is running on this machine.";
     readonly MODEL_UNAVAILABLE: (detail?: string) => string;
     readonly MODEL_UNROUTABLE: (current: string) => string;
     readonly MODEL_EMPTY: (current: string) => string;
@@ -31,6 +33,9 @@ export type ParsedCommand = {
     text: string;
 } | {
     type: 'sessions';
+    text: string;
+} | {
+    type: 'new';
     text: string;
 } | {
     type: 'last';

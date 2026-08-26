@@ -7,6 +7,7 @@ export const MSG = {
   ].join('\n'),
   HELP: [
     '/sessions — list local sessions by workspace (Web-aligned, archived excluded) and attach',
+    '/new — create a new blank session (in the bound workspace, or pick one) and attach it',
     '/last — view the bound session\u2019s last Q&A (to continue the context)',
     '/model — switch the model of the currently bound session (takes effect next turn)',
     '/status — show the current binding',
@@ -24,6 +25,14 @@ export const MSG = {
   /** @deprecated use NO_SESSIONS */
   NO_LIVE: 'There are no attachable local sessions right now. Open or continue a conversation in Web (dsh web) first, then send /sessions.',
   PICKER_STALE: 'The list is out of date — please send /sessions again.',
+  NEW_CREATING(title: string): string {
+    return `Creating a new session in “${title}”…`
+  },
+  NEW_FAILED(detail?: string): string {
+    const tip = 'Could not create a new session.'
+    if (!detail) return tip
+    return `${tip}\nDetail: ${detail}`
+  },
   RESUME_FAILED: 'Could not attach that session (resume failed). Make sure the session exists in Web, or open it on the computer first and try again.',
   BOUND(label: string): string {
     return `Attached to local session: ${label}\nMessages from now on enter that session (same trajectory as Web).\nTo continue the context, tap \u201cView last conversation\u201d or send /last.`
@@ -66,6 +75,7 @@ export type ParsedCommand =
   | { type: 'start'; text: string }
   | { type: 'help'; text: string }
   | { type: 'sessions'; text: string }
+  | { type: 'new'; text: string }
   | { type: 'last'; text: string }
   | { type: 'model'; text: string }
   | { type: 'status'; text: string }
@@ -85,6 +95,9 @@ export function parseCommand(text: string): ParsedCommand {
     case '/sessions':
     case '/list':
       return { type: 'sessions', text }
+    case '/new':
+    case '/create':
+      return { type: 'new', text }
     case '/last':
     case '/context':
       return { type: 'last', text }

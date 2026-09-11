@@ -23,6 +23,8 @@ export declare class TelegramBridge {
     private readonly pickers;
     /** chatId → model awaiting reasoning-effort pick (kept outside picker so list refreshes won't drop it). */
     private readonly pendingModels;
+    /** chatId → live typing-keepalive timer (armed on 'turn/start', disarmed on 'turn/end'). */
+    private readonly typingTimers;
     private polling;
     private offset;
     private pollPromise;
@@ -52,6 +54,10 @@ export declare class TelegramBridge {
     private pollLoop;
     private interruptibleDelay;
     private interruptibleSleep;
+    /** Re-send 'typing' every TYPING_KEEPALIVE_MS until turn/end, unbind, rebind, or hard cap. */
+    private startTypingKeepalive;
+    private stopTypingKeepalive;
+    private stopAllTypingKeepalives;
     private onSessionEvent;
     private deliver;
     private deliverHtml;

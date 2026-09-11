@@ -23,7 +23,6 @@ export declare const MSG: {
     readonly MODEL_EMPTY: (current: string) => string;
     readonly MODEL_SET: (selected: string) => string;
     readonly MODEL_FAILED: (detail?: string) => string;
-    readonly unknown: (command: string) => string;
 };
 export type ParsedCommand = {
     type: 'start';

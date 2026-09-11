@@ -25,12 +25,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hi-wenw/dsh-telegram-channel.git"
+    "url": "git+https://github.com/andrepontesmelo/dsh-telegram-channel.git"
   },
   "bugs": {
-    "url": "https://github.com/hi-wenw/dsh-telegram-channel/issues"
+    "url": "https://github.com/andrepontesmelo/dsh-telegram-channel/issues"
   },
-  "homepage": "https://github.com/hi-wenw/dsh-telegram-channel#readme",
+  "homepage": "https://github.com/andrepontesmelo/dsh-telegram-channel#readme",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

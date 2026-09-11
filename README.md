@@ -6,7 +6,7 @@
 
 Telegram **手机遥控器** for DeepSeek Harness：附着本机正在跑的 Web 会话，与电脑 **同轨迹、双向可见**（Codex-style）。
 
-**发现：** [dsh-plugin topic](https://github.com/topics/dsh-plugin) · 安装：`dsh plugin --profile web add github:hi-wenw/dsh-telegram-channel`
+**发现：** [dsh-plugin topic](https://github.com/topics/dsh-plugin) · 安装：`dsh plugin --profile web add github:andrepontesmelo/dsh-telegram-channel`
 
 > 🍴 **Fork maintained by [@andrepontesmelo](https://github.com/andrepontesmelo)** — lineage: [hi-wenw/dsh-telegram-channel](https://github.com/hi-wenw/dsh-telegram-channel) (original) → [psyrtsov](https://github.com/psyrtsov/dsh-telegram-channel) (English UI v0.4.0) → **this fork**.
 >
@@ -66,7 +66,7 @@ Telegram **手机遥控器** for DeepSeek Harness：附着本机正在跑的 Web
 > 请在 **PowerShell** 执行。若当前是 **CMD**，用下面「CMD 一键」那行。
 
 ```powershell
-irm https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/andrepontesmelo/dsh-telegram-channel/master/scripts/install.ps1 | iex
 ```
 
 > 脚本已兼容 `irm | iex`（菜单逻辑包在 scriptblock 里）。CMD 请用下面整行。
@@ -74,13 +74,13 @@ irm https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master/script
 **CMD 一键：**
 
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master/scripts/install.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/andrepontesmelo/dsh-telegram-channel/master/scripts/install.ps1 | iex"
 ```
 
 备用（先下载再执行）：
 
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr -UseBasicParsing https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master/scripts/install.ps1 -OutFile $env:TEMP\dsh-tg.ps1; & $env:TEMP\dsh-tg.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr -UseBasicParsing https://raw.githubusercontent.com/andrepontesmelo/dsh-telegram-channel/master/scripts/install.ps1 -OutFile $env:TEMP\dsh-tg.ps1; & $env:TEMP\dsh-tg.ps1"
 ```
 
 启动后用**数字**选择：
@@ -108,7 +108,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr -UseBasicParsing htt
 #### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/andrepontesmelo/dsh-telegram-channel/master/scripts/install.sh | bash
 # 同样出现数字菜单；或：
 # ./scripts/install.sh install --token '...' --user-id '...'
 # ./scripts/install.sh start|stop|status
@@ -148,7 +148,7 @@ curl -fsSL https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master
 # DSH_TELEGRAM_TOKEN = BotFather token
 # DSH_TELEGRAM_ALLOWED_USER_IDS = 数字ID
 
-dsh plugin --profile web add github:hi-wenw/dsh-telegram-channel
+dsh plugin --profile web add github:andrepontesmelo/dsh-telegram-channel
 dsh web
 ```
 
@@ -190,7 +190,7 @@ dsh plugin --profile web add D:\path\to\dsh-telegram-channel
 
 | 现象 | 处理 |
 |---|---|
-| `ERR_PNPM_IGNORED_BUILDS` / allowBuilds | pnpm 11 起：**仅** `dsh-telegram-channel: true` 不够（git 包无效）。在 `~\.dsh\profiles\web\pnpm-workspace.yaml` 写入仓库级授权后重装：<br>`'dsh-telegram-channel@git+https://github.com/hi-wenw/dsh-telegram-channel.git': true`<br>再跑菜单 **1**（新版安装脚本会自动写） |
+| `ERR_PNPM_IGNORED_BUILDS` / allowBuilds | pnpm 11 起：**仅** `dsh-telegram-channel: true` 不够（git 包无效）。在 `~\.dsh\profiles\web\pnpm-workspace.yaml` 写入仓库级授权后重装：<br>`'dsh-telegram-channel@git+https://github.com/andrepontesmelo/dsh-telegram-channel.git': true`<br>再跑菜单 **1**（新版安装脚本会自动写） |
 | `duplicate loader entry id: dsh-telegram-channel` | 用户 patch **不要 insert** 同名 id；用上面的 `- id:` 覆盖，或只用环境变量白名单 |
 | 手机完全没回复 / ConnectTimeout | 打开本地代理（如 7890），重启 `dsh web` |
 | `missing bot token` | 检查环境变量；**新开终端**再 `dsh web` |
@@ -205,7 +205,7 @@ dsh plugin --profile web add D:\path\to\dsh-telegram-channel
 ### 开发
 
 ```powershell
-git clone https://github.com/hi-wenw/dsh-telegram-channel.git
+git clone https://github.com/andrepontesmelo/dsh-telegram-channel.git
 cd dsh-telegram-channel
 npm install --legacy-peer-deps
 npm test
@@ -221,7 +221,7 @@ npm run build
 3. 用户安装：
 
 ```powershell
-dsh plugin --profile web add github:hi-wenw/dsh-telegram-channel
+dsh plugin --profile web add github:andrepontesmelo/dsh-telegram-channel
 ```
 
 4. 可选：收录到 [awesome-deepseek-harness](https://github.com/0xsline/awesome-deepseek-harness) 等精选列表；可选再发 npm
@@ -267,13 +267,13 @@ Desktop Web shows the same trajectory:
 Run in **PowerShell** (not CMD). Opens a number menu: install / start / stop / status / open browser.
 
 ```powershell
-irm https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/andrepontesmelo/dsh-telegram-channel/master/scripts/install.ps1 | iex
 ```
 
 CMD:
 
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master/scripts/install.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/andrepontesmelo/dsh-telegram-channel/master/scripts/install.ps1 | iex"
 ```
 
 Direct actions:
@@ -291,13 +291,13 @@ The script sets user env vars, ensures `allowBuilds`, and runs `dsh plugin add`.
 ```bash
 export DSH_TELEGRAM_TOKEN='...'
 export DSH_TELEGRAM_ALLOWED_USER_IDS='123456789'
-curl -fsSL https://raw.githubusercontent.com/hi-wenw/dsh-telegram-channel/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/andrepontesmelo/dsh-telegram-channel/master/scripts/install.sh | bash
 ```
 
 ### Manual
 
 ```powershell
-dsh plugin --profile web add github:hi-wenw/dsh-telegram-channel
+dsh plugin --profile web add github:andrepontesmelo/dsh-telegram-channel
 ```
 
 Allowlist via `DSH_TELEGRAM_ALLOWED_USER_IDS` (preferred) or id-targeted YAML override — **never** re-`insert` the same plugin id.
@@ -307,7 +307,7 @@ Allowlist via `DSH_TELEGRAM_ALLOWED_USER_IDS` (preferred) or id-targeted YAML ov
 Listed under the public GitHub topic [`dsh-plugin`](https://github.com/topics/dsh-plugin). Install:
 
 ```powershell
-dsh plugin --profile web add github:hi-wenw/dsh-telegram-channel
+dsh plugin --profile web add github:andrepontesmelo/dsh-telegram-channel
 ```
 
 ### License

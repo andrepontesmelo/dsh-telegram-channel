@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test-and-build-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        # peerDependencies are mirrored in devDependencies; npm resolves
+        # them only with --legacy-peer-deps (same as README dev setup).
+        run: npm ci --legacy-peer-deps
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Fail when lib/ drifts from src/
+        # Stage rebuilt lib/ and compare against HEAD so both modified and
+        # newly emitted-but-uncommitted files are caught.
+        run: |
+          git add lib/
+          if ! git diff --cached --exit-code lib/; then
+            echo "::error::lib/ is out of parity with src/. Run 'npm run build' and commit the rebuilt lib/."
+            exit 1
+          fi
